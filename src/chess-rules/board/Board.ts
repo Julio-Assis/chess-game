@@ -5,6 +5,7 @@ import { Bishop } from '../pieces/Bishop';
 import { King } from '../pieces/King';
 import { Queen } from '../pieces/Queen';
 import { Pawn } from '../pieces/Pawn';
+import { Position } from '../pieces/Move';
 
 enum GAME_MODE {
     DEFAULT = 'DEFAULT',
@@ -20,6 +21,48 @@ export class Board {
         this.mode = mode;
         this.boardTable = [[]];
         this.createGame();
+    }
+
+    public isPositionWithinTheTable(position: Position): boolean {
+        const tableRows = this.boardTable.length;
+        const tableColumns = this.boardTable.length > 0 ? this.boardTable[0].length : 0;
+        const isRowValid = position.row < tableRows && position.row >= 0;
+        const isColumnValid = position.column < tableColumns && position.column >= 0;
+        return isRowValid && isColumnValid;
+    }
+
+    public isPositionEmpty(position: Position): boolean {
+        if (this.isPositionWithinTheTable(position)) {
+            return this.getBoardElement(position) == null;
+        }
+
+        return false;
+    }
+
+    private getBoardElement(position: Position): BoardElement {
+        if (!this.isPositionWithinTheTable(position)) {
+            throw new Error(`Provided position ${position} is outside of the table`);
+        }
+
+        return this.boardTable[position.row][position.column];
+    }
+
+    public hasTeamEnemy(team: PIECE_TEAM, position: Position): boolean {
+        const boardElement = this.getBoardElement(position);
+        if (boardElement != null) {
+            return boardElement.getTeam() !== team;
+        }
+
+        return false;
+    }
+
+    public hasTeamFriend(team: PIECE_TEAM, position: Position): boolean {
+        const boardElement = this.getBoardElement(position);
+        if (boardElement != null) {
+            return boardElement.getTeam() === team;
+        }
+
+        return false;
     }
 
     private createGame(): void {
