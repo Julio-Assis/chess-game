@@ -2,53 +2,52 @@ import { Move, Position } from './Move';
 import { Piece } from './Piece';
 
 export class Knight extends Piece {
-    public getAvailableMoves(): Array<Move> {
+    public getAvailableMoves(currentPosition: Position): Array<Move> {
         const availableMoves: Array<Move> = [];
-        const currentPosition = this.getPosition();
 
-        availableMoves.push(...this.getValidMove({
+        availableMoves.push(...this.getValidMove(currentPosition, {
             ...currentPosition,
             row: currentPosition.row + 2,
             column: currentPosition.column + 1,
         }));
 
-        availableMoves.push(...this.getValidMove({
+        availableMoves.push(...this.getValidMove(currentPosition, {
             ...currentPosition,
             row: currentPosition.row + 2,
             column: currentPosition.column - 1,
         }));
 
-        availableMoves.push(...this.getValidMove({
+        availableMoves.push(...this.getValidMove(currentPosition, {
             ...currentPosition,
             row: currentPosition.row - 2,
             column: currentPosition.column + 1,
         }));
 
-        availableMoves.push(...this.getValidMove({
+        availableMoves.push(...this.getValidMove(currentPosition, {
             ...currentPosition,
             row: currentPosition.row - 2,
             column: currentPosition.column - 1,
         }));
 
-        availableMoves.push(...this.getValidMove({
+        availableMoves.push(...this.getValidMove(currentPosition, {
             ...currentPosition,
             row: currentPosition.row + 1,
             column: currentPosition.column + 2,
         }));
 
-        availableMoves.push(...this.getValidMove({
+        availableMoves.push(...this.getValidMove(currentPosition, {
             ...currentPosition,
             row: currentPosition.row + 1,
             column: currentPosition.column - 2,
         }));
 
-        availableMoves.push(...this.getValidMove({
+        availableMoves.push(...this.getValidMove(currentPosition, {
             ...currentPosition,
             row: currentPosition.row - 1,
             column: currentPosition.column + 2,
         }));
 
-        availableMoves.push(...this.getValidMove({
+        availableMoves.push(...this.getValidMove(currentPosition, {
             ...currentPosition,
             row: currentPosition.row - 1,
             column: currentPosition.column - 2,
@@ -57,19 +56,19 @@ export class Knight extends Piece {
         return availableMoves;
     }
 
-    private getValidMove(position: Position): Array<Move> {
+    private getValidMove(currentPosition: Position, targetPosition: Position): Array<Move> {
         const validMoves: Array<Move> = [];
         const board = this.getBoard();
 
-        if (!board.isPositionWithinTheTable(position)) {
+        if (!board.isPositionWithinTheTable(targetPosition)) {
             return validMoves;
         }
 
-        if (board.hasTeamFriend(this.getTeam(), position)) {
+        if (board.hasTeamFriend(this.getTeam(), targetPosition)) {
             return validMoves;
         }
 
-        const move = new Move(this.getPosition(), position);
+        const move = new Move(currentPosition, targetPosition);
         validMoves.push(move);
         return validMoves;
     }

@@ -5,10 +5,11 @@ import { Bishop } from '../pieces/Bishop';
 import { King } from '../pieces/King';
 import { Queen } from '../pieces/Queen';
 import { Pawn } from '../pieces/Pawn';
-import { Position } from '../pieces/Move';
+import { Position, Move } from '../pieces/Move';
 
-enum GAME_MODE {
+export enum GAME_MODE {
     DEFAULT = 'DEFAULT',
+    CUSTOM = 'CUSTOM',
 }
 
 type BoardElement = Piece | null | undefined;
@@ -16,10 +17,16 @@ type BoardElement = Piece | null | undefined;
 export class Board {
     private mode: GAME_MODE;
     private boardTable: BoardElement[][];
+    private whiteTeam: Map<BoardElement, Position>;
+    private blackTeam: Map<BoardElement, Position>;
+    private recordedMoves: Array<{ piece: Piece, move: Move, endPositionOldElement: BoardElement; }>;
 
     constructor(mode: GAME_MODE) {
         this.mode = mode;
-        this.boardTable = [[]];
+        this.boardTable = new Array();
+        this.whiteTeam = new Map<BoardElement, Position>();
+        this.blackTeam = new Map<BoardElement, Position>();
+        this.recordedMoves = [];
         this.createGame();
     }
 
@@ -41,7 +48,7 @@ export class Board {
 
     private getBoardElement(position: Position): BoardElement {
         if (!this.isPositionWithinTheTable(position)) {
-            throw new Error(`Provided position ${position} is outside of the table`);
+            return null;
         }
 
         return this.boardTable[position.row][position.column];
@@ -68,56 +75,127 @@ export class Board {
     private createGame(): void {
         if (this.mode === GAME_MODE.DEFAULT) {
             this.createDefaultGame();
+        } else if (this.mode === GAME_MODE.CUSTOM) {
+
         } else {
             throw new Error('Game mode not implemented');
         }
     };
 
-    private createDefaultGame(): void {
-        for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 8; col++) {
-                this.boardTable[row][col] = null;
+    public static createCustomBoard(boardDimensions: { rows: number, columns: number; }): Board {
+        const board = new this(GAME_MODE.CUSTOM);
+        board.initBoardTable(boardDimensions);
+        return board;
+    }
+
+    private initBoardTable(boardDimensions: { rows: number, columns: number; }) {
+        for (let row = 0; row < boardDimensions.rows; row++) {
+            this.boardTable[row] = new Array();
+            for (let col = 0; col < boardDimensions.columns; col++) {
+                this.boardTable[row].push(null);
             }
         }
+    }
 
-        this.boardTable[0][0] = new Tower(PIECE_TEAM.WHITE, this, { row: 0, column: 0 });
-        this.boardTable[0][1] = new Knight(PIECE_TEAM.WHITE, this, { row: 0, column: 1 });
-        this.boardTable[0][2] = new Bishop(PIECE_TEAM.WHITE, this, { row: 0, column: 2 });
-        this.boardTable[0][3] = new Queen(PIECE_TEAM.WHITE, this, { row: 0, column: 3 });
-        this.boardTable[0][4] = new King(PIECE_TEAM.WHITE, this, { row: 0, column: 4 });
-        this.boardTable[0][5] = new Bishop(PIECE_TEAM.WHITE, this, { row: 0, column: 5 });
-        this.boardTable[0][6] = new Knight(PIECE_TEAM.WHITE, this, { row: 0, column: 6 });
-        this.boardTable[0][7] = new Tower(PIECE_TEAM.WHITE, this, { row: 0, column: 7 });
+    public addPiecesToCustomBoard(pieces: Array<Piece>) {
+        if (this.mode === GAME_MODE.CUSTOM) {
+            this.addPiecesToBoard(pieces);
+        }
+    }
 
-        this.boardTable[1][0] = new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 0 });
-        this.boardTable[1][1] = new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 1 });
-        this.boardTable[1][2] = new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 2 });
-        this.boardTable[1][3] = new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 3 });
-        this.boardTable[1][4] = new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 4 });
-        this.boardTable[1][5] = new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 5 });
-        this.boardTable[1][6] = new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 6 });
-        this.boardTable[1][7] = new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 7 });
+    private addPiecesToBoard(pieces: Array<Piece>) {
+        for (const piece of pieces) {
+            const initialPosition = piece.getInitialPosition();
+            this.boardTable[initialPosition.row][initialPosition.column] = piece;
+        }
 
-        this.boardTable[6][0] = new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 0 });
-        this.boardTable[6][1] = new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 1 });
-        this.boardTable[6][2] = new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 2 });
-        this.boardTable[6][3] = new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 3 });
-        this.boardTable[6][4] = new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 4 });
-        this.boardTable[6][5] = new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 5 });
-        this.boardTable[6][6] = new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 6 });
-        this.boardTable[6][7] = new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 7 });
+        this.assignTeams();
+    }
 
-        this.boardTable[7][0] = new Tower(PIECE_TEAM.BLACK, this, { row: 7, column: 0 });
-        this.boardTable[7][1] = new Knight(PIECE_TEAM.BLACK, this, { row: 7, column: 1 });
-        this.boardTable[7][2] = new Bishop(PIECE_TEAM.BLACK, this, { row: 7, column: 2 });
-        this.boardTable[7][3] = new Queen(PIECE_TEAM.BLACK, this, { row: 7, column: 3 });
-        this.boardTable[7][4] = new King(PIECE_TEAM.BLACK, this, { row: 7, column: 4 });
-        this.boardTable[7][5] = new Bishop(PIECE_TEAM.BLACK, this, { row: 7, column: 5 });
-        this.boardTable[7][6] = new Knight(PIECE_TEAM.BLACK, this, { row: 7, column: 6 });
-        this.boardTable[7][7] = new Tower(PIECE_TEAM.BLACK, this, { row: 7, column: 7 });
+    public makeMove(piece: Piece, move: Move, isRock: boolean = false) {
+        if (isRock) {
+            throw new Error('Rock is not implemented');
+        }
+
+        const startPosition = move.getStartPosition();
+        const endPosition = move.getEndPosition();
+
+        const currentElementOnEnd = this.getBoardElement(endPosition);
+        this.boardTable[endPosition.row][endPosition.column] = piece;
+        this.boardTable[startPosition.row][endPosition.column] = null;
+
+        this.recordedMoves.push({
+            piece,
+            move,
+            endPositionOldElement: currentElementOnEnd,
+        });
+    }
+
+    private assignTeams(): void {
+        const tableRows = this.boardTable.length;
+        const tableColumns = this.boardTable.length > 0 ? this.boardTable[0].length : 0;
+
+        for (let row = 0; row < tableRows; row++) {
+            for (let column = 0; column < tableColumns; column++) {
+                const boardElement = this.getBoardElement({ row, column });
+                if (boardElement != null) {
+                    this.assignTeam(boardElement, { row, column });
+                }
+            }
+        }
+    }
+
+    private assignTeam(boardElement: Piece, position: Position): void {
+        if (boardElement.getTeam() === PIECE_TEAM.WHITE) {
+            this.whiteTeam.set(boardElement, position);
+        } else {
+            this.blackTeam.set(boardElement, position);
+        }
     }
 
     public getTable(): BoardElement[][] {
         return this.boardTable;
+    }
+
+    private createDefaultGame(): void {
+        this.initBoardTable({ rows: 8, columns: 8 });
+
+        this.addPiecesToBoard([
+            new Tower(PIECE_TEAM.WHITE, this, { row: 0, column: 0 }),
+            new Knight(PIECE_TEAM.WHITE, this, { row: 0, column: 1 }),
+            new Bishop(PIECE_TEAM.WHITE, this, { row: 0, column: 2 }),
+            new Queen(PIECE_TEAM.WHITE, this, { row: 0, column: 3 }),
+            new King(PIECE_TEAM.WHITE, this, { row: 0, column: 4 }),
+            new Bishop(PIECE_TEAM.WHITE, this, { row: 0, column: 5 }),
+            new Knight(PIECE_TEAM.WHITE, this, { row: 0, column: 6 }),
+            new Tower(PIECE_TEAM.WHITE, this, { row: 0, column: 7 }),
+            new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 0 }),
+            new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 1 }),
+            new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 2 }),
+            new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 3 }),
+            new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 4 }),
+            new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 5 }),
+            new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 6 }),
+            new Pawn(PIECE_TEAM.WHITE, this, { row: 1, column: 7 }),
+
+            new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 0 }),
+            new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 1 }),
+            new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 2 }),
+            new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 3 }),
+            new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 4 }),
+            new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 5 }),
+            new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 6 }),
+            new Pawn(PIECE_TEAM.BLACK, this, { row: 6, column: 7 }),
+            new Tower(PIECE_TEAM.BLACK, this, { row: 7, column: 0 }),
+            new Knight(PIECE_TEAM.BLACK, this, { row: 7, column: 1 }),
+            new Bishop(PIECE_TEAM.BLACK, this, { row: 7, column: 2 }),
+            new Queen(PIECE_TEAM.BLACK, this, { row: 7, column: 3 }),
+            new King(PIECE_TEAM.BLACK, this, { row: 7, column: 4 }),
+            new Bishop(PIECE_TEAM.BLACK, this, { row: 7, column: 5 }),
+            new Knight(PIECE_TEAM.BLACK, this, { row: 7, column: 6 }),
+            new Tower(PIECE_TEAM.BLACK, this, { row: 7, column: 7 }),
+        ]);
+
+        this.assignTeams();
     }
 }

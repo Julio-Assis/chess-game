@@ -2,20 +2,18 @@ import { Piece } from './Piece';
 import { Move, Position } from './Move';
 
 export abstract class PieceWithRepeatedMove extends Piece {
-    protected getMovesWithStep(stepOnRows: number, stepOnColumns: number): Array<Move> {
+    protected getMovesWithStep(currentPosition: Position, stepOnRows: number, stepOnColumns: number): Array<Move> {
         const availableMoves: Array<Move> = [];
         const board = this.getBoard();
 
-        const initialPosition = this.getInitialPosition();
-
         let candidatePosition: Position = {
-            ...initialPosition,
-            row: initialPosition.row + stepOnRows,
-            column: initialPosition.column + stepOnColumns,
+            ...currentPosition,
+            row: currentPosition.row + stepOnRows,
+            column: currentPosition.column + stepOnColumns,
         };
 
         while (board.isPositionWithinTheTable(candidatePosition)) {
-            const move = new Move(initialPosition, candidatePosition);
+            const move = new Move(currentPosition, candidatePosition);
             if (board.hasTeamFriend(this.getTeam(), candidatePosition)) {
                 break;
             }
@@ -28,7 +26,7 @@ export abstract class PieceWithRepeatedMove extends Piece {
             availableMoves.push(move);
             candidatePosition = {
                 row: candidatePosition.row + stepOnRows,
-                column: candidatePosition.column + stepOnRows,
+                column: candidatePosition.column + stepOnColumns,
             };
         }
 
