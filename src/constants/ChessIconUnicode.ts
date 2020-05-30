@@ -11,6 +11,7 @@ export enum ChessIconUnicode {
   BLACK_BISHOP = '&#9821;',
   BLACK_KNIGHT = '&#9822;',
   BLACK_PAWN = '&#9823;',
+  BULLET = '&#8226;',
 }
 
 export type ChessIconUnicodeKeys = keyof typeof ChessIconUnicode;

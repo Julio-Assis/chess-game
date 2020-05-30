@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useEffect, useState } from 'react';
 import { createStyles } from '../shared/utils';
 import { css } from 'emotion';
 import {
@@ -28,7 +29,14 @@ function getIcon(name: BOARD_ELEMENT_NAME, team: PIECE_TEAM): ChessIconUnicode {
 }
 
 export function GameBoard({ dimensions = { rows: 8, columns: 8 } }: Props) {
-  const boardRules = new Board(GAME_MODE.DEFAULT);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [boardRules, _] = useState(new Board(GAME_MODE.DEFAULT));
+
+  useEffect(() => {
+    if (hasChanges) {
+      setHasChanges(false);
+    }
+  }, [hasChanges]);
 
   function renderBoard() {
     const board = [];
@@ -42,6 +50,8 @@ export function GameBoard({ dimensions = { rows: 8, columns: 8 } }: Props) {
         let icon;
         if (elementName == null) {
           icon = null;
+        } else if (boardRules.isAvailableMove({ row, column })) {
+          icon = ChessIconUnicode.BULLET;
         } else if (elementName.name === BOARD_ELEMENT_NAME.EMPTY) {
           icon = null;
         } else {
@@ -53,6 +63,10 @@ export function GameBoard({ dimensions = { rows: 8, columns: 8 } }: Props) {
             key={`row${row}-column${column}`}
             color={color}
             icon={icon}
+            onClick={() => {
+              boardRules.executeBoardAction({ row, column });
+              setHasChanges(true);
+            }}
           />
         );
       }
@@ -63,6 +77,8 @@ export function GameBoard({ dimensions = { rows: 8, columns: 8 } }: Props) {
         </div>
       );
     }
+
+    console.log(boardRules.getTable());
 
     return <div className={css(styles.rootContainer)}>{board}</div>;
   }

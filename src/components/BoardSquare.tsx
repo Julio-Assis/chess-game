@@ -7,12 +7,14 @@ export type BoardSquareProps = Readonly<{
   color: 'white' | 'black';
   icon?: ChessIconUnicode | null | undefined;
   size?: 'medium' | 'large';
+  onClick: () => void;
 }>;
 
 export function BoardSquare({
   color,
   icon,
   size = 'medium',
+  onClick,
 }: BoardSquareProps) {
   return (
     <div
@@ -22,6 +24,7 @@ export function BoardSquare({
           : styles.blackSquareContainer,
         styles.rootContainer
       )}
+      onClick={onClick}
     >
       {icon && (
         <span

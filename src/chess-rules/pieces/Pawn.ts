@@ -1,6 +1,7 @@
 import { Move, Position } from './Move';
 import { Piece, PIECE_TEAM } from './Piece';
 import { BOARD_ELEMENT_NAME } from '../board/Board';
+import { isEqual } from 'lodash';
 
 export class Pawn extends Piece {
   public getName(): BOARD_ELEMENT_NAME {
@@ -9,7 +10,6 @@ export class Pawn extends Piece {
 
   public getAvailableMoves(currentPosition: Position): Array<Move> {
     const availableMoves: Array<Move> = [];
-
     const board = this.getBoard();
 
     const pawnStep = this.getTeam() === PIECE_TEAM.WHITE ? 1 : -1;
@@ -21,7 +21,7 @@ export class Pawn extends Piece {
       const move = new Move(currentPosition, { row: currentPosition.row + pawnStep, column: currentPosition.column });
       availableMoves.push(move);
 
-      if (this.getInitialPosition() === currentPosition && board.isPositionEmpty({
+      if (isEqual(this.getInitialPosition(), currentPosition) && board.isPositionEmpty({
         ...currentPosition,
         row: currentPosition.row + pawnStep * 2
       })) {
