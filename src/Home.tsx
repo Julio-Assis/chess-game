@@ -1,13 +1,8 @@
 import * as React from 'react';
-import { css } from 'emotion';
-import { createStyles } from './shared/utils';
+import { GameBoard } from './components/GameBoard';
 
-interface IHomeProps {}
-
-type Props = Readonly<IHomeProps>;
+type Props = Readonly<{}>;
 
 export function Home(props: Props) {
-  return <div>Welcome</div>;
+  return <GameBoard />;
 }
-
-const styles = createStyles({});
