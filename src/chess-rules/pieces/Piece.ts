@@ -32,8 +32,4 @@ export abstract class Piece {
   }
 
   public abstract getAvailableMoves(currentPosition: Position): Array<Move>;
-
-  protected filterMovesThatExposeTheKing(moves: Array<Move>): Array<Move> {
-    return moves;
-  };
 }

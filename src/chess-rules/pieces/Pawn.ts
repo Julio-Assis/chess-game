@@ -40,6 +40,6 @@ export class Pawn extends Piece {
       availableMoves.push(move);
     }
 
-    return this.filterMovesThatExposeTheKing(availableMoves);
+    return availableMoves;
   }
 }

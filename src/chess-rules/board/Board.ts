@@ -25,13 +25,14 @@ export enum BOARD_ELEMENT_NAME {
 }
 
 type BoardElement = Piece | null | undefined;
+type RecordedMove = { piece: Piece, move: Move, endPositionOldElement: BoardElement; };
 
 export class Board {
   private mode: GAME_MODE;
   private boardTable: BoardElement[][];
   private whiteTeam: Map<Piece, Position>;
   private blackTeam: Map<Piece, Position>;
-  private recordedMoves: Array<{ piece: Piece, move: Move, endPositionOldElement: BoardElement; }>;
+  private recordedMoves: Array<RecordedMove>;
   private availableMoves: Move[];
   private activePiece: Piece | undefined;
 
@@ -151,7 +152,7 @@ export class Board {
   public executeBoardAction(position: Position): void {
     if (this.isAvailableMove(position)) {
       const piece = nullThrows(this.activePiece);
-      const team = piece.getTeam() === PIECE_TEAM.WHITE ? this.whiteTeam : this.blackTeam;
+      const team = this.getPieceTeam(piece);
       this.makeMove(piece, new Move(nullThrows(team.get(piece)), position));
       this.availableMoves = [];
       return;
@@ -175,40 +176,50 @@ export class Board {
 
     this.activePiece = piece;
     this.availableMoves = this.filterMovesThatExposeTheKing(this.activePiece, piece.getAvailableMoves(position));
-    // this.availableMoves = piece.getAvailableMoves(position);
   }
 
   private filterMovesThatExposeTheKing(piece: Piece, moves: Array<Move>): Array<Move> {
+
+    const friendKing = nullThrows(Array.from(this.getPieceTeam(piece).keys()).find((piece) => piece.getName() === BOARD_ELEMENT_NAME.KING));
     return moves.filter((move) => {
       this.makeMove(piece, move);
-      const friendKing = nullThrows(Array.from(this.getTeam(piece).keys()).find((piece) => piece.getName() === BOARD_ELEMENT_NAME.KING));
-      const kingPosition = this.getTeam(friendKing).get(friendKing);
 
-      const oppositeTeam = this.getTeam(piece, true);
-      const oppositeTeamPieces = Array.from(oppositeTeam.keys());
+      const kingPosition = this.getPieceTeam(friendKing).get(friendKing) as Position;
+      const isKingInThreat = this.isPositionInThreat(friendKing.getTeam(), kingPosition);
 
-      const pieceThreatningKing = oppositeTeamPieces.find((piece) => {
-        const piecePosition = oppositeTeam.get(piece) as Position;
-        const kingThreatMove = piece.getAvailableMoves(piecePosition).find((move) => isEqual(move.getEndPosition(), kingPosition));
-        return kingThreatMove != null;
-      });
       this.revertLastMove();
 
-      return pieceThreatningKing == null;
+      return !isKingInThreat;
     });
   }
 
-  private getTeam(piece: Piece, opposite: boolean = false): Map<Piece, Position> {
-    if (opposite) {
-      return piece.getTeam() === PIECE_TEAM.WHITE ? this.blackTeam : this.whiteTeam;
-    }
+  public isPositionInThreat(team: PIECE_TEAM, position: Position): boolean {
+    const oppositeTeam = this.getTeam(team, true);
+    const oppositeTeamPieces = Array.from(oppositeTeam.keys());
 
-    return piece.getTeam() === PIECE_TEAM.WHITE ? this.whiteTeam : this.blackTeam;
+    const pieceThreatening = oppositeTeamPieces.find((piece) => {
+      const piecePosition = oppositeTeam.get(piece) as Position;
+      const threatMove = piece.getAvailableMoves(piecePosition).find((move) => isEqual(move.getEndPosition(), position));
+      return threatMove != null;
+    });
+
+    return pieceThreatening != null;
   }
 
-  public makeMove(piece: Piece, move: Move, isRock: boolean = false) {
-    if (isRock) {
-      throw new Error('Rock is not implemented');
+  private getPieceTeam(piece: Piece, opposite: boolean = false): Map<Piece, Position> {
+    return this.getTeam(piece.getTeam(), opposite);
+  }
+
+  private getTeam(team: PIECE_TEAM, opposite: boolean = false): Map<Piece, Position> {
+    if (opposite) {
+      return team === PIECE_TEAM.WHITE ? this.blackTeam : this.whiteTeam;
+    }
+    return team === PIECE_TEAM.WHITE ? this.whiteTeam : this.blackTeam;
+  }
+
+  private makeMove(piece: Piece, move: Move) {
+    if (this.isRockMove(piece, move)) {
+      return this.makeRockMove(piece as King, move);
     }
 
     const startPosition = move.getStartPosition();
@@ -218,8 +229,8 @@ export class Board {
     this.boardTable[endPosition.row][endPosition.column] = piece;
     this.boardTable[startPosition.row][startPosition.column] = null;
 
-    const pieceTeam = piece.getTeam() === PIECE_TEAM.WHITE ? this.whiteTeam : this.blackTeam;
-    const oppositeTeam = piece.getTeam() === PIECE_TEAM.WHITE ? this.blackTeam : this.whiteTeam;
+    const pieceTeam = this.getPieceTeam(piece);
+    const oppositeTeam = this.getPieceTeam(piece, true);
 
     pieceTeam.set(piece, endPosition);
 
@@ -234,11 +245,59 @@ export class Board {
     });
   }
 
+  private isRockMove(piece: Piece, move: Move): boolean {
+    return piece.getName() === BOARD_ELEMENT_NAME.KING &&
+      Math.abs(move.getEndPosition().column - move.getStartPosition().column) > 1;
+  }
+
+  private makeRockMove(king: King, move: Move): void {
+    const team = this.getPieceTeam(king);
+
+    const kingStartPosition = move.getStartPosition();
+    const kingEndPosition = move.getEndPosition();
+
+    const towerStartPosition: Position = {
+      row: kingStartPosition.row,
+      column: kingEndPosition.column - kingStartPosition.column > 0 ?
+        kingEndPosition.column + 1 :
+        kingEndPosition.column - 2,
+    };
+
+    const towerEndPosition = {
+      ...towerStartPosition,
+      column: kingEndPosition.column - kingStartPosition.column > 0 ?
+        towerStartPosition.column - 2 :
+        towerStartPosition.column + 3,
+    };
+
+    const tower = nullThrows(this.getBoardElement(towerStartPosition));
+
+    this.boardTable[kingEndPosition.row][kingEndPosition.column] = king;
+    this.boardTable[kingStartPosition.row][kingStartPosition.column] = null;
+
+
+    this.boardTable[towerEndPosition.row][towerEndPosition.column] = tower;
+    this.boardTable[towerStartPosition.row][towerStartPosition.column] = null;
+
+    team.set(tower, towerEndPosition);
+    team.set(king, kingEndPosition);
+
+    this.recordedMoves.push({
+      piece: king,
+      move,
+      endPositionOldElement: tower,
+    });
+  }
+
   public revertLastMove(): void {
     if (this.recordedMoves.length === 0) {
       return;
     }
     const lastMove = nullThrows(this.recordedMoves.pop());
+
+    if (this.isRockMove(lastMove.piece, lastMove.move)) {
+      return this.revertRockMove(lastMove);
+    }
 
     const startPosition = lastMove.move.getStartPosition();
     const endPosition = lastMove.move.getEndPosition();
@@ -249,13 +308,46 @@ export class Board {
     this.boardTable[startPosition.row][startPosition.column] = movedPiece;
     this.boardTable[endPosition.row][endPosition.column] = endPositionOldElement;
 
-    const pieceTeam = movedPiece.getTeam() === PIECE_TEAM.WHITE ? this.whiteTeam : this.blackTeam;
+    const pieceTeam = this.getPieceTeam(movedPiece);
     pieceTeam.set(movedPiece, startPosition);
 
     if (endPositionOldElement != null) {
-      const oldElementTeam = endPositionOldElement.getTeam() === PIECE_TEAM.WHITE ? this.whiteTeam : this.blackTeam;
+      const oldElementTeam = this.getPieceTeam(endPositionOldElement);
       oldElementTeam.set(endPositionOldElement, endPosition);
     }
+  }
+
+  private revertRockMove(lastMove: RecordedMove): void {
+    const king = lastMove.piece;
+    const tower = lastMove.piece;
+    const move = lastMove.move;
+
+    const kingStartPosition = move.getStartPosition();
+    const kingEndPosition = move.getEndPosition();
+
+    const team = this.getPieceTeam(king);
+
+    this.boardTable[kingEndPosition.row][kingEndPosition.column] = null;
+    this.boardTable[kingStartPosition.row][kingStartPosition.column] = king;
+    team.set(king, kingStartPosition);
+
+    const towerStartPosition: Position = {
+      row: kingStartPosition.row,
+      column: kingEndPosition.column - kingStartPosition.column > 0 ?
+        kingEndPosition.column + 1 :
+        kingEndPosition.column - 2,
+    };
+
+    const towerEndPosition = {
+      ...towerStartPosition,
+      column: kingEndPosition.column - kingStartPosition.column > 0 ?
+        towerStartPosition.column - 2 :
+        towerStartPosition.column + 3,
+    };
+
+    this.boardTable[towerEndPosition.row][towerEndPosition.column] = null;
+    this.boardTable[towerStartPosition.row][towerStartPosition.column] = tower;
+    team.set(tower, towerStartPosition);
   }
 
   private assignTeams(): void {
