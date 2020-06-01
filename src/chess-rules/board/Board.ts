@@ -7,7 +7,7 @@ import { Queen } from '../pieces/Queen';
 import { Pawn } from '../pieces/Pawn';
 import { Position, Move } from '../pieces/Move';
 import { nullThrows } from '../../shared/nullThrows';
-import { isEqual } from 'lodash';
+import { isEqual, filter } from 'lodash';
 
 export enum GAME_MODE {
   DEFAULT = 'DEFAULT',
@@ -24,13 +24,13 @@ export enum BOARD_ELEMENT_NAME {
   TOWER = 'TOWER',
 }
 
-type BoardElement = Piece | null | undefined | 'MOVE';
+type BoardElement = Piece | null | undefined;
 
 export class Board {
   private mode: GAME_MODE;
   private boardTable: BoardElement[][];
-  private whiteTeam: Map<BoardElement, Position>;
-  private blackTeam: Map<BoardElement, Position>;
+  private whiteTeam: Map<Piece, Position>;
+  private blackTeam: Map<Piece, Position>;
   private recordedMoves: Array<{ piece: Piece, move: Move, endPositionOldElement: BoardElement; }>;
   private availableMoves: Move[];
   private activePiece: Piece | undefined;
@@ -38,8 +38,8 @@ export class Board {
   constructor(mode: GAME_MODE) {
     this.mode = mode;
     this.boardTable = [];
-    this.whiteTeam = new Map<BoardElement, Position>();
-    this.blackTeam = new Map<BoardElement, Position>();
+    this.whiteTeam = new Map<Piece, Position>();
+    this.blackTeam = new Map<Piece, Position>();
     this.recordedMoves = [];
     this.availableMoves = [];
     this.createGame();
@@ -72,10 +72,6 @@ export class Board {
 
     const boardElement = nullThrows(this.getBoardElement(position));
 
-    if (boardElement === 'MOVE') {
-      return { name: BOARD_ELEMENT_NAME.EMPTY };
-    }
-
     return {
       team: boardElement.getTeam(),
       name: boardElement.getName(),
@@ -92,7 +88,7 @@ export class Board {
 
   public hasTeamEnemy(team: PIECE_TEAM, position: Position): boolean {
     const boardElement = this.getBoardElement(position);
-    if (boardElement != null && boardElement !== 'MOVE') {
+    if (boardElement != null) {
       return boardElement.getTeam() !== team;
     }
 
@@ -101,7 +97,7 @@ export class Board {
 
   public hasTeamFriend(team: PIECE_TEAM, position: Position): boolean {
     const boardElement = this.getBoardElement(position);
-    if (boardElement != null && boardElement !== 'MOVE') {
+    if (boardElement != null) {
       return boardElement.getTeam() === team;
     }
 
@@ -171,23 +167,43 @@ export class Board {
 
   private setAvailableMoves(position: Position) {
 
-    this.availableMoves.forEach((move) => {
-      const endPosition = move.getEndPosition();
-      this.boardTable[endPosition.row][endPosition.column] = null;
-    });
-
     if (!this.isPositionWithinTheTable(position) || this.isPositionEmpty(position)) {
       return null;
     }
 
     const piece = nullThrows(this.getBoardElement(position));
 
-    if (piece === 'MOVE') {
-      return null;
+    this.activePiece = piece;
+    this.availableMoves = this.filterMovesThatExposeTheKing(this.activePiece, piece.getAvailableMoves(position));
+    // this.availableMoves = piece.getAvailableMoves(position);
+  }
+
+  private filterMovesThatExposeTheKing(piece: Piece, moves: Array<Move>): Array<Move> {
+    return moves.filter((move) => {
+      this.makeMove(piece, move);
+      const friendKing = nullThrows(Array.from(this.getTeam(piece).keys()).find((piece) => piece.getName() === BOARD_ELEMENT_NAME.KING));
+      const kingPosition = this.getTeam(friendKing).get(friendKing);
+
+      const oppositeTeam = this.getTeam(piece, true);
+      const oppositeTeamPieces = Array.from(oppositeTeam.keys());
+
+      const pieceThreatningKing = oppositeTeamPieces.find((piece) => {
+        const piecePosition = oppositeTeam.get(piece) as Position;
+        const kingThreatMove = piece.getAvailableMoves(piecePosition).find((move) => isEqual(move.getEndPosition(), kingPosition));
+        return kingThreatMove != null;
+      });
+      this.revertLastMove();
+
+      return pieceThreatningKing == null;
+    });
+  }
+
+  private getTeam(piece: Piece, opposite: boolean = false): Map<Piece, Position> {
+    if (opposite) {
+      return piece.getTeam() === PIECE_TEAM.WHITE ? this.blackTeam : this.whiteTeam;
     }
 
-    this.activePiece = piece;
-    this.availableMoves = piece.getAvailableMoves(position);
+    return piece.getTeam() === PIECE_TEAM.WHITE ? this.whiteTeam : this.blackTeam;
   }
 
   public makeMove(piece: Piece, move: Move, isRock: boolean = false) {
@@ -206,13 +222,40 @@ export class Board {
     const oppositeTeam = piece.getTeam() === PIECE_TEAM.WHITE ? this.blackTeam : this.whiteTeam;
 
     pieceTeam.set(piece, endPosition);
-    oppositeTeam.delete(currentElementOnEnd);
+
+    if (currentElementOnEnd != null) {
+      oppositeTeam.delete(currentElementOnEnd);
+    }
 
     this.recordedMoves.push({
       piece,
       move,
       endPositionOldElement: currentElementOnEnd,
     });
+  }
+
+  public revertLastMove(): void {
+    if (this.recordedMoves.length === 0) {
+      return;
+    }
+    const lastMove = nullThrows(this.recordedMoves.pop());
+
+    const startPosition = lastMove.move.getStartPosition();
+    const endPosition = lastMove.move.getEndPosition();
+
+    const movedPiece = lastMove.piece;
+    const endPositionOldElement = lastMove.endPositionOldElement;
+
+    this.boardTable[startPosition.row][startPosition.column] = movedPiece;
+    this.boardTable[endPosition.row][endPosition.column] = endPositionOldElement;
+
+    const pieceTeam = movedPiece.getTeam() === PIECE_TEAM.WHITE ? this.whiteTeam : this.blackTeam;
+    pieceTeam.set(movedPiece, startPosition);
+
+    if (endPositionOldElement != null) {
+      const oldElementTeam = endPositionOldElement.getTeam() === PIECE_TEAM.WHITE ? this.whiteTeam : this.blackTeam;
+      oldElementTeam.set(endPositionOldElement, endPosition);
+    }
   }
 
   private assignTeams(): void {
@@ -222,7 +265,7 @@ export class Board {
     for (let row = 0; row < tableRows; row++) {
       for (let column = 0; column < tableColumns; column++) {
         const boardElement = this.getBoardElement({ row, column });
-        if (boardElement != null && boardElement !== 'MOVE') {
+        if (boardElement != null) {
           this.assignTeam(boardElement, { row, column });
         }
       }

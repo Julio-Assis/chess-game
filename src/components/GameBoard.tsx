@@ -30,7 +30,7 @@ function getIcon(name: BOARD_ELEMENT_NAME, team: PIECE_TEAM): ChessIconUnicode {
 
 export function GameBoard({ dimensions = { rows: 8, columns: 8 } }: Props) {
   const [hasChanges, setHasChanges] = useState(false);
-  const [boardRules, _] = useState(new Board(GAME_MODE.DEFAULT));
+  const [boardRules, setBoardRules] = useState(new Board(GAME_MODE.DEFAULT));
 
   useEffect(() => {
     if (hasChanges) {
@@ -78,16 +78,34 @@ export function GameBoard({ dimensions = { rows: 8, columns: 8 } }: Props) {
       );
     }
 
-    console.log(boardRules.getTable());
+    return (
+      <div>
+        <div className={css(styles.boardRootContainer)}>{board}</div>
+        <button
+          onClick={() => {
+            setBoardRules(new Board(GAME_MODE.DEFAULT));
+          }}
+        >
+          Reset Game
+        </button>
 
-    return <div className={css(styles.rootContainer)}>{board}</div>;
+        <button
+          onClick={() => {
+            boardRules.revertLastMove();
+            setHasChanges(true);
+          }}
+        >
+          Revert last move
+        </button>
+      </div>
+    );
   }
 
   return renderBoard();
 }
 
 const styles = createStyles({
-  rootContainer: {
+  boardRootContainer: {
     border: '4px solid brown',
     display: 'inline-block',
     margin: '4px',
