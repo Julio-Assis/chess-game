@@ -1,9 +1,17 @@
-import React from 'react';
-import { render } from '@testing-library/react';
+import * as React from 'react';
+import { shallow, ShallowWrapper } from 'enzyme';
 import App from './App';
+import { Home } from './Home';
 
-test('renders learn react link', () => {
-  const { getByText } = render(<App />);
-  const linkElement = getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+describe('renders learn react link', () => {
+  let wrapper: ShallowWrapper;
+
+  beforeEach(() => {
+    wrapper = shallow(<App />);
+  });
+
+  it('should render Home component', function () {
+    expect(wrapper.exists()).toBeTruthy();
+    expect(wrapper.find(Home).exists()).toBeTruthy();
+  });
 });

@@ -7,7 +7,7 @@ import { Queen } from '../pieces/Queen';
 import { Pawn } from '../pieces/Pawn';
 import { Position, Move } from '../pieces/Move';
 import { nullThrows } from '../../shared/nullThrows';
-import { isEqual, filter } from 'lodash';
+import { isEqual } from 'lodash';
 
 export enum GAME_MODE {
   DEFAULT = 'DEFAULT',
